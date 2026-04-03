@@ -1,8 +1,0 @@
-loguru
-
-[acp]
-agent-client-protocol>=0.9.0
-
-[dev]
-pytest>=8.0
-pytest-cov>=5.0
