@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
-import os
 import shutil
 import time as _time
+from pathlib import Path
 from typing import Optional
 
 from loguru import logger
@@ -39,10 +39,8 @@ class _GeminiClient:
     def __init__(self, cwd: str):
         self._cwd = cwd
         self._response_text = ""
-        self._conn = None
 
     async def read_text_file(self, path: str, session_id: str, **kw) -> "ReadTextFileResponse":
-        from pathlib import Path
         resolved = Path(path).resolve()
         root = Path(self._cwd).resolve()
         if not resolved.is_relative_to(root):
@@ -90,20 +88,15 @@ class _GeminiClient:
         pass
 
     def on_connect(self, conn) -> None:
-        self._conn = conn
+        pass  # Required by ACP protocol; this client doesn't use the connection directly
 
 
 _CAPABILITIES = None
-
-
-def _get_capabilities():
-    global _CAPABILITIES
-    if _CAPABILITIES is None:
-        _CAPABILITIES = ClientCapabilities(
-            fs=FileSystemCapabilities(read_text_file=True, write_text_file=False),
-            terminal=False,
-        )
-    return _CAPABILITIES
+if ACP_AVAILABLE:
+    _CAPABILITIES = ClientCapabilities(
+        fs=FileSystemCapabilities(read_text_file=True, write_text_file=False),
+        terminal=False,
+    )
 
 
 async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
@@ -132,7 +125,7 @@ async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
             await asyncio.wait_for(
                 conn.initialize(
                     protocol_version=PROTOCOL_VERSION,
-                    client_capabilities=_get_capabilities(),
+                    client_capabilities=_CAPABILITIES,
                 ),
                 timeout=_remaining(),
             )

@@ -1,0 +1,9 @@
+pyproject.toml
+gemini_acp/__init__.py
+gemini_acp/client.py
+gemini_acp.egg-info/PKG-INFO
+gemini_acp.egg-info/SOURCES.txt
+gemini_acp.egg-info/dependency_links.txt
+gemini_acp.egg-info/requires.txt
+gemini_acp.egg-info/top_level.txt
+tests/test_gemini_acp.py
