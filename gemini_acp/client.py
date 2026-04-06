@@ -1,8 +1,8 @@
 """Gemini CLI client via Agent Client Protocol (ACP).
 
 Provides summarize_via_gemini() for text summarization using Gemini CLI
-in ACP mode (--acp). Falls back to None if ACP library or Gemini binary
-is unavailable, allowing the summarizer fallback chain to continue.
+in ACP mode (--acp). Falls back to None if the Gemini binary is
+unavailable, allowing the summarizer fallback chain to continue.
 """
 from __future__ import annotations
 
@@ -15,22 +15,20 @@ from typing import Optional
 
 from loguru import logger
 
-try:
-    from acp import spawn_agent_process, text_block, PROTOCOL_VERSION, RequestError
-    from acp.schema import (
-        ClientCapabilities,
-        FileSystemCapabilities,
-        ReadTextFileResponse,
-        WriteTextFileResponse,
-        RequestPermissionResponse,
-        DeniedOutcome,
-        AllowedOutcome,
-        AgentMessageChunk,
-        TextContentBlock,
-    )
-    ACP_AVAILABLE = True
-except ImportError:
-    ACP_AVAILABLE = False
+from acp import spawn_agent_process, text_block, PROTOCOL_VERSION, RequestError
+from acp.schema import (
+    ClientCapabilities,
+    FileSystemCapabilities,
+    ReadTextFileResponse,
+    WriteTextFileResponse,
+    RequestPermissionResponse,
+    DeniedOutcome,
+    AllowedOutcome,
+    AgentMessageChunk,
+    TextContentBlock,
+)
+
+ACP_AVAILABLE = True
 
 
 class _GeminiClient:
@@ -91,12 +89,10 @@ class _GeminiClient:
         pass  # Required by ACP protocol; this client doesn't use the connection directly
 
 
-_CAPABILITIES = None
-if ACP_AVAILABLE:
-    _CAPABILITIES = ClientCapabilities(
-        fs=FileSystemCapabilities(read_text_file=True, write_text_file=False),
-        terminal=False,
-    )
+_CAPABILITIES = ClientCapabilities(
+    fs=FileSystemCapabilities(read_text_file=True, write_text_file=False),
+    terminal=False,
+)
 
 
 async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
@@ -176,13 +172,9 @@ def summarize_via_gemini(text: str, prompt: str, model: str = "",
                          timeout: int = 30) -> Optional[str]:
     """Summarize text using Gemini CLI via ACP.
 
-    Falls back to None if ACP is not available, Gemini is not installed,
-    or any error occurs. The summarizer fallback chain handles this.
+    Falls back to None if Gemini is not installed or any error occurs.
+    The summarizer fallback chain handles this.
     """
-    if not ACP_AVAILABLE:
-        logger.debug("ACP library not installed — Gemini backend unavailable")
-        return None
-
     if not shutil.which("gemini"):
         logger.warning("Gemini CLI not found on PATH")
         return None

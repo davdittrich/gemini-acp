@@ -5,15 +5,8 @@ from unittest.mock import patch
 
 
 class TestSummarizeViaGemini:
-    def test_returns_none_when_acp_unavailable(self):
-        with patch("gemini_acp.client.ACP_AVAILABLE", False):
-            from gemini_acp.client import summarize_via_gemini
-            result = summarize_via_gemini("text", "prompt")
-        assert result is None
-
     def test_returns_none_when_gemini_not_on_path(self):
-        with patch("gemini_acp.client.ACP_AVAILABLE", True), \
-             patch("gemini_acp.client.shutil") as mock_shutil:
+        with patch("gemini_acp.client.shutil") as mock_shutil:
             mock_shutil.which.return_value = None
             from gemini_acp.client import summarize_via_gemini
             result = summarize_via_gemini("text", "prompt")
@@ -21,8 +14,7 @@ class TestSummarizeViaGemini:
 
     def test_returns_none_on_timeout(self):
         """When _run_sync returns None (from timeout inside _run_prompt), result is None."""
-        with patch("gemini_acp.client.ACP_AVAILABLE", True), \
-             patch("gemini_acp.client.shutil") as mock_shutil, \
+        with patch("gemini_acp.client.shutil") as mock_shutil, \
              patch("gemini_acp.client._run_sync", return_value=None):
             mock_shutil.which.return_value = "/usr/bin/gemini"
             from gemini_acp.client import summarize_via_gemini
@@ -36,8 +28,7 @@ class TestSummarizeViaGemini:
             call_args["model"] = model
             return "summary"
 
-        with patch("gemini_acp.client.ACP_AVAILABLE", True), \
-             patch("gemini_acp.client.shutil") as mock_shutil, \
+        with patch("gemini_acp.client.shutil") as mock_shutil, \
              patch("gemini_acp.client._run_prompt", side_effect=_capture_prompt):
             mock_shutil.which.return_value = "/usr/bin/gemini"
             from gemini_acp.client import summarize_via_gemini
@@ -52,8 +43,7 @@ class TestSummarizeViaGemini:
             call_args["model"] = model
             return "summary"
 
-        with patch("gemini_acp.client.ACP_AVAILABLE", True), \
-             patch("gemini_acp.client.shutil") as mock_shutil, \
+        with patch("gemini_acp.client.shutil") as mock_shutil, \
              patch("gemini_acp.client._run_prompt", side_effect=_capture_prompt):
             mock_shutil.which.return_value = "/usr/bin/gemini"
             from gemini_acp.client import summarize_via_gemini

@@ -24,13 +24,8 @@ without managing the ACP protocol themselves.
 ## Installation
 
 ```bash
-pip install -e path/to/gemini-acp        # base (graceful degradation)
-pip install -e "path/to/gemini-acp[acp]" # with ACP library (required for actual use)
+pip install -e path/to/gemini-acp
 ```
-
-The base install provides `summarize_via_gemini` and `ACP_AVAILABLE`.
-Without the `[acp]` extra, `ACP_AVAILABLE` is `False` and all calls
-return `None` — consumers fall back to alternative backends.
 
 ### Prerequisites
 
@@ -43,17 +38,16 @@ return `None` — consumers fall back to alternative backends.
 ### Python library
 
 ```python
-from gemini_acp import summarize_via_gemini, ACP_AVAILABLE
+from gemini_acp import summarize_via_gemini
 
-if ACP_AVAILABLE:
-    result = summarize_via_gemini(
-        text="Long article text here...",
-        prompt="Summarize in 2 sentences.",
-        model="gemini-3-flash-preview",  # optional; empty = CLI default
-        timeout=30,                       # seconds
-    )
-    if result:
-        print(result)
+result = summarize_via_gemini(
+    text="Long article text here...",
+    prompt="Summarize in 2 sentences.",
+    model="gemini-3-flash-preview",  # optional; empty = CLI default
+    timeout=30,                       # seconds
+)
+if result:
+    print(result)
 ```
 
 `summarize_via_gemini` returns the response text as a string, or `None`
@@ -84,7 +78,6 @@ Consumer (scholarposter, tldr-scholar, etc.)
     ▼
 summarize_via_gemini(text, prompt, model, timeout)
     │
-    ├─ ACP_AVAILABLE is False? → return None
     ├─ gemini not on PATH? → return None
     │
     ▼
@@ -137,7 +130,6 @@ The package is designed to be a non-breaking dependency:
 
 | Condition | Behavior |
 |-----------|----------|
-| `agent-client-protocol` not installed | `ACP_AVAILABLE = False`; all calls return `None` |
 | `gemini` binary not on PATH | Returns `None`; logs warning |
 | ACP connection timeout | Returns `None`; logs warning |
 | Any ACP protocol error | Returns `None`; logs warning |
@@ -150,7 +142,7 @@ Consumers handle `None` by falling back to alternative backends
 
 ```bash
 cd gemini-acp
-pip install -e ".[acp,dev]"
+pip install -e ".[dev]"
 pytest
 ```
 
