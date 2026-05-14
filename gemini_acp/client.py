@@ -11,6 +11,7 @@ import concurrent.futures
 import shutil
 import time as _time
 from contextlib import suppress
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
@@ -27,9 +28,17 @@ from acp.schema import (
     AllowedOutcome,
     AgentMessageChunk,
     TextContentBlock,
+    UsageUpdate,
 )
 
 ACP_AVAILABLE = True
+
+
+@dataclass
+class GeminiUsage:
+    tokens_used: int
+    cost_usd: float | None
+    cost_currency: str | None
 
 
 class _GeminiClient:
@@ -38,6 +47,7 @@ class _GeminiClient:
     def __init__(self, cwd: str):
         self._cwd = cwd
         self._response_text = ""
+        self._usage: GeminiUsage | None = None
 
     async def read_text_file(self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kw) -> "ReadTextFileResponse":
         resolved = Path(path).resolve()
@@ -64,6 +74,12 @@ class _GeminiClient:
         if isinstance(update, AgentMessageChunk):
             if isinstance(update.content, TextContentBlock):
                 self._response_text += update.content.text
+        elif isinstance(update, UsageUpdate):
+            self._usage = GeminiUsage(
+                tokens_used=update.used,
+                cost_usd=update.cost.amount if update.cost else None,
+                cost_currency=update.cost.currency if update.cost else None,
+            )
 
     async def create_terminal(self, *a, **kw):
         raise RequestError(-32601, "Terminal not permitted")
@@ -97,7 +113,7 @@ _CAPABILITIES = ClientCapabilities(
 
 
 async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
-                      cwd: str = ".") -> Optional[str]:
+                      cwd: str = ".") -> tuple[str | None, GeminiUsage | None]:
     """Send a prompt to Gemini via ACP. Returns response text or None on failure.
 
     Uses a single shared deadline across all phases (connect + session + prompt)
@@ -146,19 +162,19 @@ async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
                     proc.kill()
     except asyncio.TimeoutError:
         logger.warning(f"Gemini ACP timed out after {timeout}s")
-        return None
+        return (None, None)
     except FileNotFoundError:
         logger.warning("Gemini CLI not found on PATH")
-        return None
+        return (None, None)
     except Exception as e:
         logger.warning(f"Gemini ACP error: {e}")
-        return None
+        return (None, None)
 
     text = client._response_text.strip()
-    return text if text else None
+    return (text if text else None, client._usage)
 
 
-def _run_sync(coro) -> Optional[str]:
+def _run_sync(coro) -> tuple[str | None, GeminiUsage | None] | None:
     """Run async coroutine synchronously, handling existing event loops.
 
     Uses asyncio.run() when no loop is running (normal cron execution).
@@ -177,15 +193,19 @@ def _run_sync(coro) -> Optional[str]:
 
 
 def summarize_via_gemini(text: str, prompt: str, model: str = "",
-                         timeout: int = 30) -> Optional[str]:
+                         timeout: int = 30) -> tuple[str | None, GeminiUsage | None]:
     """Summarize text using Gemini CLI via ACP.
 
-    Falls back to None if Gemini is not installed or any error occurs.
-    The summarizer fallback chain handles this.
+    Returns (response_text, usage) where usage is a GeminiUsage or None.
+    Falls back to (None, None) if Gemini is not installed or any error occurs.
+    The summarizer fallback chain handles the None text case.
     """
     if not shutil.which("gemini"):
         logger.warning("Gemini CLI not found on PATH")
-        return None
+        return (None, None)
 
     full_prompt = f"{prompt}\n\n{text}"
-    return _run_sync(_run_prompt(full_prompt, model=model, timeout=float(timeout)))
+    result = _run_sync(_run_prompt(full_prompt, model=model, timeout=float(timeout)))
+    if result is None:
+        return (None, None)
+    return result
