@@ -24,7 +24,7 @@ class TestSummarizeViaGemini:
     def test_model_passed_as_kwarg(self):
         """Verify model parameter is forwarded to _run_prompt."""
         call_args = {}
-        async def _capture_prompt(prompt_text, model="", timeout=30.0, cwd="."):
+        async def _capture_prompt(*_, model="", **__):
             call_args["model"] = model
             return "summary"
 
@@ -39,7 +39,7 @@ class TestSummarizeViaGemini:
     def test_empty_model_not_passed_as_flag(self):
         """When model is empty, no --model flag should be in the command."""
         call_args = {}
-        async def _capture_prompt(prompt_text, model="", timeout=30.0, cwd="."):
+        async def _capture_prompt(*_, model="", **__):
             call_args["model"] = model
             return "summary"
 
@@ -49,6 +49,7 @@ class TestSummarizeViaGemini:
             from gemini_acp.client import summarize_via_gemini
             result = summarize_via_gemini("text", "prompt", model="")
         assert call_args["model"] == ""
+        assert result == "summary"
 
 
 def test_proc_kill_called_on_timeout():
@@ -64,7 +65,7 @@ def test_proc_kill_called_on_timeout():
     mock_conn.prompt = AsyncMock(side_effect=asyncio.TimeoutError)
 
     @asynccontextmanager
-    async def fake_spawn(*args, **kwargs):
+    async def fake_spawn(*_, **__):
         yield mock_conn, mock_proc
 
     with patch("gemini_acp.client.spawn_agent_process", fake_spawn):
@@ -79,7 +80,6 @@ class TestRunSync:
     def test_works_without_event_loop(self):
         """Normal cron context — no pre-existing event loop."""
         from gemini_acp.client import _run_sync
-        import asyncio
 
         async def _simple():
             return "hello"

@@ -39,7 +39,7 @@ class _GeminiClient:
         self._cwd = cwd
         self._response_text = ""
 
-    async def read_text_file(self, path: str, session_id: str, **kw) -> "ReadTextFileResponse":
+    async def read_text_file(self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kw) -> "ReadTextFileResponse":
         resolved = Path(path).resolve()
         root = Path(self._cwd).resolve()
         if not resolved.is_relative_to(root):
