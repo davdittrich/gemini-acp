@@ -138,10 +138,12 @@ async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
                     ),
                     timeout=_remaining(),
                 )
-            except asyncio.TimeoutError:
+            finally:
+                # Gemini stays alive after prompt (interactive mode). Kill before
+                # __aexit__ calls conn.close() so the stream gets EOF immediately
+                # rather than hanging waiting for a live process to close its pipe.
                 with suppress(ProcessLookupError):
                     proc.kill()
-                raise
     except asyncio.TimeoutError:
         logger.warning(f"Gemini ACP timed out after {timeout}s")
         return None
