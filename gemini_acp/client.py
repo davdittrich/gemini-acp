@@ -10,6 +10,7 @@ import asyncio
 import concurrent.futures
 import shutil
 import time as _time
+from contextlib import suppress
 from pathlib import Path
 from typing import Optional
 
@@ -118,24 +119,29 @@ async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
             client, "gemini", "--acp", *flags,
             cwd=cwd,
         ) as (conn, proc):
-            await asyncio.wait_for(
-                conn.initialize(
-                    protocol_version=PROTOCOL_VERSION,
-                    client_capabilities=_CAPABILITIES,
-                ),
-                timeout=_remaining(),
-            )
-            session = await asyncio.wait_for(
-                conn.new_session(cwd=cwd, mcp_servers=[]),
-                timeout=_remaining(),
-            )
-            await asyncio.wait_for(
-                conn.prompt(
-                    session_id=session.session_id,
-                    prompt=[text_block(prompt_text)],
-                ),
-                timeout=_remaining(),
-            )
+            try:
+                await asyncio.wait_for(
+                    conn.initialize(
+                        protocol_version=PROTOCOL_VERSION,
+                        client_capabilities=_CAPABILITIES,
+                    ),
+                    timeout=_remaining(),
+                )
+                session = await asyncio.wait_for(
+                    conn.new_session(cwd=cwd, mcp_servers=[]),
+                    timeout=_remaining(),
+                )
+                await asyncio.wait_for(
+                    conn.prompt(
+                        session_id=session.session_id,
+                        prompt=[text_block(prompt_text)],
+                    ),
+                    timeout=_remaining(),
+                )
+            except asyncio.TimeoutError:
+                with suppress(ProcessLookupError):
+                    proc.kill()
+                raise
     except asyncio.TimeoutError:
         logger.warning(f"Gemini ACP timed out after {timeout}s")
         return None

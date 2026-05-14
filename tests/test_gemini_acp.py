@@ -51,6 +51,30 @@ class TestSummarizeViaGemini:
         assert call_args["model"] == ""
 
 
+def test_proc_kill_called_on_timeout():
+    """proc.kill() must be called when conn.prompt() times out."""
+    import asyncio
+    from contextlib import asynccontextmanager
+    from unittest.mock import AsyncMock, MagicMock, patch
+
+    mock_proc = MagicMock()
+    mock_conn = MagicMock()
+    mock_conn.initialize = AsyncMock(return_value=MagicMock())
+    mock_conn.new_session = AsyncMock(return_value=MagicMock())
+    mock_conn.prompt = AsyncMock(side_effect=asyncio.TimeoutError)
+
+    @asynccontextmanager
+    async def fake_spawn(*args, **kwargs):
+        yield mock_conn, mock_proc
+
+    with patch("gemini_acp.client.spawn_agent_process", fake_spawn):
+        from gemini_acp.client import _run_prompt
+        result = asyncio.run(_run_prompt("test prompt", timeout=1.0))
+
+    assert result is None
+    mock_proc.kill.assert_called_once()
+
+
 class TestRunSync:
     def test_works_without_event_loop(self):
         """Normal cron context — no pre-existing event loop."""
