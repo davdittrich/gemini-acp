@@ -151,11 +151,11 @@ def test_no_usage_update_returns_estimated():
 
     assert text == 'hello'
     assert usage is not None
-    assert usage.is_estimated is True
-    assert usage.cost_usd is None
-    assert usage.cost_currency is None
+    assert usage.is_estimated is True  # type: ignore[reportAttributeAccessIssue]
+    assert usage.cost_usd is None  # type: ignore[reportAttributeAccessIssue]
+    assert usage.cost_currency is None  # type: ignore[reportAttributeAccessIssue]
     # estimated_tokens = (len("test") + len("hello")) // 4 = 2
-    assert usage.tokens_used == 2
+    assert usage.tokens_used == 2  # type: ignore[reportAttributeAccessIssue]
 
 
 def test_usage_update_no_cost():
