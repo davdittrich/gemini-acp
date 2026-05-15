@@ -116,13 +116,16 @@ _CAPABILITIES = ClientCapabilities(
 
 
 def _read_usage_from_session_file(start_wall: float) -> "GeminiUsage | None":
-    """Read real token counts from the Gemini CLI session JSON written during this call.
+    """Read real token counts from the Gemini CLI session JSONL written during this call.
 
-    Looks for a session-*.json file modified at or after start_wall (with 2s
-    tolerance). Returns GeminiUsage with is_estimated=False, or None if no
-    matching file is found or it cannot be parsed.
+    Gemini CLI writes one JSON object per line to
+    ~/.gemini/tmp/<name>/chats/session-*.jsonl.  Looks for a file modified at
+    or after start_wall (with 2s tolerance), then scans lines in reverse for
+    the last entry that has a 'tokens' dict containing 'total'.
+    Returns GeminiUsage with is_estimated=False, or None if no matching file
+    is found or it cannot be parsed.
     """
-    pattern = os.path.expanduser("~/.gemini/tmp/**/chats/session-*.json")
+    pattern = os.path.expanduser("~/.gemini/tmp/**/chats/session-*.jsonl")
     try:
         files = [
             f for f in glob.glob(pattern, recursive=True)
@@ -135,9 +138,15 @@ def _read_usage_from_session_file(start_wall: float) -> "GeminiUsage | None":
     session_file = max(files, key=os.path.getmtime)
     try:
         with open(session_file) as fh:
-            data = json.load(fh)
-        messages = data.get("messages", [])
-        for msg in reversed(messages):
+            lines = fh.readlines()
+        for line in reversed(lines):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                msg = json.loads(line)
+            except json.JSONDecodeError:
+                continue
             if "tokens" in msg:
                 tok = msg["tokens"]
                 return GeminiUsage(
