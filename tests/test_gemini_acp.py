@@ -96,7 +96,7 @@ def test_usage_update_captured():
     from contextlib import asynccontextmanager
     from unittest.mock import AsyncMock, MagicMock, patch
     from acp.schema import UsageUpdate, Cost
-    from gemini_acp.client import GeminiUsage
+    from gemini_acp.client import GeminiUsage  # type: ignore[reportAttributeAccessIssue]
 
     captured_client = {}
 
@@ -121,9 +121,9 @@ def test_usage_update_captured():
 
     assert text == 'summary'
     assert isinstance(usage, GeminiUsage)
-    assert usage.tokens_used == 1234
-    assert abs(usage.cost_usd - 0.002345) < 1e-9
-    assert usage.cost_currency == 'USD'
+    assert usage.tokens_used == 1234  # type: ignore[reportAttributeAccessIssue]
+    assert abs(usage.cost_usd - 0.002345) < 1e-9  # type: ignore[reportAttributeAccessIssue]
+    assert usage.cost_currency == 'USD'  # type: ignore[reportAttributeAccessIssue]
 
 
 def test_no_usage_update_returns_none():
@@ -159,7 +159,7 @@ def test_usage_update_no_cost():
     from contextlib import asynccontextmanager
     from unittest.mock import AsyncMock, MagicMock, patch
     from acp.schema import UsageUpdate
-    from gemini_acp.client import GeminiUsage
+    from gemini_acp.client import GeminiUsage  # type: ignore[reportAttributeAccessIssue]
 
     @asynccontextmanager
     async def fake_spawn(client_obj, *_, **__):
@@ -180,6 +180,6 @@ def test_usage_update_no_cost():
         text, usage = result
 
     assert isinstance(usage, GeminiUsage)
-    assert usage.tokens_used == 500
-    assert usage.cost_usd is None
-    assert usage.cost_currency is None
+    assert usage.tokens_used == 500  # type: ignore[reportAttributeAccessIssue]
+    assert usage.cost_usd is None  # type: ignore[reportAttributeAccessIssue]
+    assert usage.cost_currency is None  # type: ignore[reportAttributeAccessIssue]
