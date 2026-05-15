@@ -126,6 +126,8 @@ _MODEL_PRICING: dict[str, dict[str, float]] = {
     # Gemini 3.1 Pro Preview (assume 2.5 Pro rates until official pricing released)
     "gemini-3.1-pro-preview":   {"input": 1.25,  "cached": 0.3125, "output": 10.00, "thoughts": 10.00},
     "gemini-3.1-flash-preview": {"input": 0.15,  "cached": 0.0375, "output": 0.60,  "thoughts": 3.50},
+    # Gemini 3 Flash Preview (assume 2.5 Flash rates until official pricing released)
+    "gemini-3-flash-preview":   {"input": 0.15,  "cached": 0.0375, "output": 0.60,  "thoughts": 3.50},
 }
 
 
