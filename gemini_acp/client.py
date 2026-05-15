@@ -8,6 +8,9 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import glob
+import json
+import os
 import shutil
 import time as _time
 from contextlib import suppress
@@ -112,6 +115,42 @@ _CAPABILITIES = ClientCapabilities(
 )
 
 
+def _read_usage_from_session_file(start_wall: float) -> "GeminiUsage | None":
+    """Read real token counts from the Gemini CLI session JSON written during this call.
+
+    Looks for a session-*.json file modified at or after start_wall (with 2s
+    tolerance). Returns GeminiUsage with is_estimated=False, or None if no
+    matching file is found or it cannot be parsed.
+    """
+    pattern = os.path.expanduser("~/.gemini/tmp/**/chats/session-*.json")
+    try:
+        files = [
+            f for f in glob.glob(pattern, recursive=True)
+            if os.path.getmtime(f) >= start_wall - 2.0
+        ]
+    except OSError:
+        return None
+    if not files:
+        return None
+    session_file = max(files, key=os.path.getmtime)
+    try:
+        with open(session_file) as fh:
+            data = json.load(fh)
+        messages = data.get("messages", [])
+        for msg in reversed(messages):
+            if "tokens" in msg:
+                tok = msg["tokens"]
+                return GeminiUsage(
+                    tokens_used=tok.get("total", 0),
+                    cost_usd=None,
+                    cost_currency=None,
+                    is_estimated=False,
+                )
+    except Exception:
+        return None
+    return None
+
+
 async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
                       cwd: str = ".") -> tuple[str | None, GeminiUsage | None]:
     """Send a prompt to Gemini via ACP. Returns response text or None on failure.
@@ -124,6 +163,7 @@ async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
     def _remaining() -> float:
         return max(0.1, deadline - _time.monotonic())
 
+    start_wall = _time.time()
     flags = []
     if model:
         flags.extend(["--model", model])
@@ -172,14 +212,17 @@ async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
 
     text = client._response_text.strip()
     if client._usage is None and text:
-        # UsageUpdate not emitted by this CLI version — estimate from character count
-        estimated_tokens = (len(prompt_text) + len(text)) // 4
-        usage: GeminiUsage | None = GeminiUsage(
-            tokens_used=estimated_tokens,
-            cost_usd=None,
-            cost_currency=None,
-            is_estimated=True,
-        )
+        # Try to read real token counts from Gemini CLI session file
+        usage: GeminiUsage | None = _read_usage_from_session_file(start_wall)
+        if usage is None:
+            # No session file found — fall back to character-count estimate
+            estimated_tokens = (len(prompt_text) + len(text)) // 4
+            usage = GeminiUsage(
+                tokens_used=estimated_tokens,
+                cost_usd=None,
+                cost_currency=None,
+                is_estimated=True,
+            )
     else:
         usage = client._usage
     return (text if text else None, usage)
