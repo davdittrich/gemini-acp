@@ -42,6 +42,7 @@ class GeminiUsage:
     cost_usd: float | None
     cost_currency: str | None
     is_estimated: bool = False
+    cost_is_estimated: bool = False
 
 
 class _GeminiClient:
@@ -115,6 +116,33 @@ _CAPABILITIES = ClientCapabilities(
 )
 
 
+_MODEL_PRICING: dict[str, dict[str, float]] = {
+    # Gemini 2.5 Flash
+    "gemini-2.5-flash":         {"input": 0.15,  "cached": 0.0375, "output": 0.60,  "thoughts": 3.50},
+    "gemini-2.5-flash-preview": {"input": 0.15,  "cached": 0.0375, "output": 0.60,  "thoughts": 3.50},
+    # Gemini 2.5 Pro
+    "gemini-2.5-pro":           {"input": 1.25,  "cached": 0.3125, "output": 10.00, "thoughts": 10.00},
+    "gemini-2.5-pro-preview":   {"input": 1.25,  "cached": 0.3125, "output": 10.00, "thoughts": 10.00},
+    # Gemini 3.1 Pro Preview (assume 2.5 Pro rates until official pricing released)
+    "gemini-3.1-pro-preview":   {"input": 1.25,  "cached": 0.3125, "output": 10.00, "thoughts": 10.00},
+    "gemini-3.1-flash-preview": {"input": 0.15,  "cached": 0.0375, "output": 0.60,  "thoughts": 3.50},
+}
+
+
+def _calculate_cost(tokens: dict, model: str) -> float | None:
+    pricing = _MODEL_PRICING.get(model)
+    if not pricing:
+        return None
+    per_m = 1_000_000
+    non_cached_input = max(0, tokens.get("input", 0) - tokens.get("cached", 0))
+    return (
+        non_cached_input * pricing["input"] / per_m
+        + tokens.get("cached", 0) * pricing["cached"] / per_m
+        + tokens.get("output", 0) * pricing["output"] / per_m
+        + tokens.get("thoughts", 0) * pricing["thoughts"] / per_m
+    )
+
+
 def _read_usage_from_session_file(start_wall: float) -> "GeminiUsage | None":
     """Read real token counts from the Gemini CLI session JSONL written during this call.
 
@@ -149,11 +177,14 @@ def _read_usage_from_session_file(start_wall: float) -> "GeminiUsage | None":
                 continue
             if "tokens" in msg:
                 tok = msg["tokens"]
+                model = msg.get("model", "")
+                cost = _calculate_cost(tok, model)
                 return GeminiUsage(
                     tokens_used=tok.get("total", 0),
-                    cost_usd=None,
-                    cost_currency=None,
+                    cost_usd=cost,
+                    cost_currency="USD" if cost is not None else None,
                     is_estimated=False,
+                    cost_is_estimated=cost is not None,
                 )
     except Exception:
         return None
