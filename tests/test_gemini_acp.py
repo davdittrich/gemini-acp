@@ -126,8 +126,8 @@ def test_usage_update_captured():
     assert usage.cost_currency == 'USD'  # type: ignore[reportAttributeAccessIssue]
 
 
-def test_no_usage_update_returns_none():
-    """When no UsageUpdate fires, second tuple element is None."""
+def test_no_usage_update_returns_estimated():
+    """When no UsageUpdate fires, usage is an estimated GeminiUsage with is_estimated=True."""
     import asyncio
     from contextlib import asynccontextmanager
     from unittest.mock import AsyncMock, MagicMock, patch
@@ -150,7 +150,12 @@ def test_no_usage_update_returns_none():
         text, usage = result
 
     assert text == 'hello'
-    assert usage is None
+    assert usage is not None
+    assert usage.is_estimated is True
+    assert usage.cost_usd is None
+    assert usage.cost_currency is None
+    # estimated_tokens = (len("test") + len("hello")) // 4 = 2
+    assert usage.tokens_used == 2
 
 
 def test_usage_update_no_cost():

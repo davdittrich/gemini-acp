@@ -38,6 +38,7 @@ class GeminiUsage:
     tokens_used: int
     cost_usd: float | None
     cost_currency: str | None
+    is_estimated: bool = False
 
 
 class _GeminiClient:
@@ -170,7 +171,18 @@ async def _run_prompt(prompt_text: str, model: str = "", timeout: float = 30.0,
         return (None, None)
 
     text = client._response_text.strip()
-    return (text if text else None, client._usage)
+    if client._usage is None and text:
+        # UsageUpdate not emitted by this CLI version — estimate from character count
+        estimated_tokens = (len(prompt_text) + len(text)) // 4
+        usage: GeminiUsage | None = GeminiUsage(
+            tokens_used=estimated_tokens,
+            cost_usd=None,
+            cost_currency=None,
+            is_estimated=True,
+        )
+    else:
+        usage = client._usage
+    return (text if text else None, usage)
 
 
 def _run_sync(coro) -> tuple[str | None, GeminiUsage | None] | None:
