@@ -26,7 +26,7 @@ class TestSummarizeViaGemini:
         call_args = {}
         async def _capture_prompt(*_, model="", **__):
             call_args["model"] = model
-            return "summary"
+            return ("summary", None)
 
         with patch("gemini_acp.client.shutil") as mock_shutil, \
              patch("gemini_acp.client._run_prompt", side_effect=_capture_prompt):
@@ -34,14 +34,14 @@ class TestSummarizeViaGemini:
             from gemini_acp.client import summarize_via_gemini
             result = summarize_via_gemini("text", "prompt", model="gemini-3-flash-preview")
         assert call_args["model"] == "gemini-3-flash-preview"
-        assert result == "summary"
+        assert result == ("summary", None)
 
     def test_empty_model_not_passed_as_flag(self):
         """When model is empty, no --model flag should be in the command."""
         call_args = {}
         async def _capture_prompt(*_, model="", **__):
             call_args["model"] = model
-            return "summary"
+            return ("summary", None)
 
         with patch("gemini_acp.client.shutil") as mock_shutil, \
              patch("gemini_acp.client._run_prompt", side_effect=_capture_prompt):
@@ -49,7 +49,7 @@ class TestSummarizeViaGemini:
             from gemini_acp.client import summarize_via_gemini
             result = summarize_via_gemini("text", "prompt", model="")
         assert call_args["model"] == ""
-        assert result == "summary"
+        assert result == ("summary", None)
 
 
 def test_proc_kill_called_on_timeout():
@@ -108,8 +108,8 @@ def test_usage_update_captured():
         mock_conn.new_session = AsyncMock(return_value=MagicMock())
         async def fake_prompt(**kw):
             from acp.schema import AgentMessageChunk, TextContentBlock
-            await client_obj.session_update('s', UsageUpdate(used=1234, cost=Cost(amount=0.002345, currency='USD'), size=8192, sessionUpdate='usage_update'))
-            await client_obj.session_update('s', AgentMessageChunk(content=TextContentBlock(type='text', text='summary'), sessionUpdate='agent_message_chunk'))
+            await client_obj.session_update('s', UsageUpdate(used=1234, cost=Cost(amount=0.002345, currency='USD'), size=8192, session_update='usage_update'))
+            await client_obj.session_update('s', AgentMessageChunk(content=TextContentBlock(type='text', text='summary'), session_update='agent_message_chunk'))
         mock_conn.prompt = AsyncMock(side_effect=fake_prompt)
         yield mock_conn, MagicMock()
 
@@ -137,7 +137,7 @@ def test_no_usage_update_returns_none():
         mock_conn.new_session = AsyncMock(return_value=MagicMock())
         async def fake_prompt(**kw):
             from acp.schema import AgentMessageChunk, TextContentBlock
-            await client_obj.session_update('s', AgentMessageChunk(content=TextContentBlock(type='text', text='hello'), sessionUpdate='agent_message_chunk'))
+            await client_obj.session_update('s', AgentMessageChunk(content=TextContentBlock(type='text', text='hello'), session_update='agent_message_chunk'))
         mock_conn.prompt = AsyncMock(side_effect=fake_prompt)
         yield mock_conn, MagicMock()
 
@@ -164,8 +164,8 @@ def test_usage_update_no_cost():
         mock_conn.new_session = AsyncMock(return_value=MagicMock())
         async def fake_prompt(**kw):
             from acp.schema import AgentMessageChunk, TextContentBlock
-            await client_obj.session_update('s', UsageUpdate(used=500, cost=None, size=4096, sessionUpdate='usage_update'))
-            await client_obj.session_update('s', AgentMessageChunk(content=TextContentBlock(type='text', text='ok'), sessionUpdate='agent_message_chunk'))
+            await client_obj.session_update('s', UsageUpdate(used=500, cost=None, size=4096, session_update='usage_update'))
+            await client_obj.session_update('s', AgentMessageChunk(content=TextContentBlock(type='text', text='ok'), session_update='agent_message_chunk'))
         mock_conn.prompt = AsyncMock(side_effect=fake_prompt)
         yield mock_conn, MagicMock()
 
