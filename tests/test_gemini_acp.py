@@ -96,7 +96,7 @@ def test_usage_update_captured():
     from contextlib import asynccontextmanager
     from unittest.mock import AsyncMock, MagicMock, patch
     from acp.schema import UsageUpdate, Cost
-    from gemini_acp import GeminiUsage
+    from gemini_acp.client import GeminiUsage
 
     captured_client = {}
 
@@ -115,7 +115,9 @@ def test_usage_update_captured():
 
     with patch('gemini_acp.client.spawn_agent_process', fake_spawn):
         from gemini_acp.client import _run_prompt
-        text, usage = asyncio.run(_run_prompt('test', timeout=10.0))
+        result = asyncio.run(_run_prompt('test', timeout=10.0))
+        assert result is not None
+        text, usage = result
 
     assert text == 'summary'
     assert isinstance(usage, GeminiUsage)
@@ -143,7 +145,9 @@ def test_no_usage_update_returns_none():
 
     with patch('gemini_acp.client.spawn_agent_process', fake_spawn):
         from gemini_acp.client import _run_prompt
-        text, usage = asyncio.run(_run_prompt('test', timeout=10.0))
+        result = asyncio.run(_run_prompt('test', timeout=10.0))
+        assert result is not None
+        text, usage = result
 
     assert text == 'hello'
     assert usage is None
@@ -155,7 +159,7 @@ def test_usage_update_no_cost():
     from contextlib import asynccontextmanager
     from unittest.mock import AsyncMock, MagicMock, patch
     from acp.schema import UsageUpdate
-    from gemini_acp import GeminiUsage
+    from gemini_acp.client import GeminiUsage
 
     @asynccontextmanager
     async def fake_spawn(client_obj, *_, **__):
@@ -171,7 +175,9 @@ def test_usage_update_no_cost():
 
     with patch('gemini_acp.client.spawn_agent_process', fake_spawn):
         from gemini_acp.client import _run_prompt
-        text, usage = asyncio.run(_run_prompt('test', timeout=10.0))
+        result = asyncio.run(_run_prompt('test', timeout=10.0))
+        assert result is not None
+        text, usage = result
 
     assert isinstance(usage, GeminiUsage)
     assert usage.tokens_used == 500
